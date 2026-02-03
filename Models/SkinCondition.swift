@@ -79,7 +79,7 @@ let skinConditions: [SkinCondition] = [
     // 1. Acne
     SkinCondition(
         name: "Acne",
-        imageUrl: "https://picsum.photos/seed/acne/500/500",
+        imageUrl: "https://imgs.search.brave.com/mAirlGk17THTK0NRKk7KwYFEp2XAhy_zkSjO1Uh1egM/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9zdGF0/aWMudmVjdGVlenku/Y29tL3N5c3RlbS9y/ZXNvdXJjZXMvdGh1/bWJuYWlscy8wNDcv/MTg1LzUwNS9zbWFs/bC9jcm9wcGVkLXNo/b3Qtdmlldy1vZi11/bmhhcHB5LWFzaWFu/LXdvbWFuLWhhdmlu/Zy1wcm9ibGVtcy1v/Zi1hY25lLWluZmxh/bW1hdGlvbi1vbi1o/ZXItZmFjZS1waG90/by5KUEc",
         description: """
         Acne is a chronic skin condition that arises when the pores of the skin become clogged with oil, dead skin cells, and bacteria. It manifests as pimples, blackheads, whiteheads, or cysts, and most commonly appears on the face, back, and shoulders.
         
@@ -126,7 +126,7 @@ let skinConditions: [SkinCondition] = [
     // 2. Eczema
     SkinCondition(
         name: "Eczema",
-        imageUrl: "https://picsum.photos/seed/eczema/500/500",
+        imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT_Lea4zd8bGljsnwhVsxCJiJG_BQ675r8JiQ&s",
         description: """
         Eczema, or atopic dermatitis, is a chronic inflammatory skin disorder that leads to dry, itchy, red, and inflamed patches of skin. It typically begins in childhood but may persist into adulthood.
         
@@ -173,7 +173,7 @@ let skinConditions: [SkinCondition] = [
     // 3. Psoriasis
     SkinCondition(
         name: "Psoriasis",
-        imageUrl: "https://picsum.photos/seed/psoriasis/500/500",
+        imageUrl: "https://cdn.prod.website-files.com/611c9f22f3097be376ea91e2/6524550bdd14c6083264b020_Screen%20Shot%202023-10-09%20at%209.31.18%20AM.png",
         description: """
         Psoriasis is a long-term autoimmune skin disease that speeds up the life cycle of skin cells, causing them to build up rapidly on the surface. This leads to thick, red patches covered with silvery scales.
         
@@ -210,7 +210,7 @@ let skinConditions: [SkinCondition] = [
     // 4. Rosacea
     SkinCondition(
         name: "Rosacea",
-        imageUrl: "https://picsum.photos/seed/rosacea/500/500",
+        imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRgb5j3WRuKmJOkloCAUqOCWddYvY9OEqNSIA&s",
         description: """
         Rosacea is a chronic skin condition primarily affecting the face, causing redness, visible blood vessels, swelling, and sometimes acne-like breakouts.
         
@@ -247,7 +247,7 @@ let skinConditions: [SkinCondition] = [
     // 5. Vitiligo
     SkinCondition(
         name: "Vitiligo",
-        imageUrl: "https://picsum.photos/seed/vitiligo/500/500",
+        imageUrl: "https://www.ashrayaskinandneuro.com/wp-content/uploads/2025/07/Vitiligo-1.png",
         description: """
         Vitiligo is a condition in which pigment-producing cells (melanocytes) are destroyed, resulting in white patches on the skin. The exact cause is unknown but is believed to be autoimmune.
         
@@ -284,7 +284,7 @@ let skinConditions: [SkinCondition] = [
     // 6. Fungal Infections
     SkinCondition(
         name: "Fungal Infections",
-        imageUrl: "https://picsum.photos/seed/fungal/500/500",
+        imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQqWX5yioDJsa3yP-OUkHaXqeYA5sGlr-pTSQ&s",
         description: """
         Fungal infections are caused by fungi thriving in warm, moist environments and include athlete's foot, ringworm, jock itch, and candidiasis.
         
@@ -332,7 +332,7 @@ let skinConditions: [SkinCondition] = [
     // 7. Hives (Urticaria)
     SkinCondition(
         name: "Hives",
-        imageUrl: "https://picsum.photos/seed/hives/500/500",
+        imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQG4F1j1lL36SpxyCn3qKfrbitwPCwg9e5AOg&s",
         description: """
         Hives, or urticaria, are red, raised, and itchy welts on the skin that appear suddenly and can vary in size and shape. They are usually caused by allergic reactions.
         
@@ -367,7 +367,7 @@ let skinConditions: [SkinCondition] = [
     // 8. Warts
     SkinCondition(
         name: "Warts",
-        imageUrl: "https://picsum.photos/seed/warts/500/500",
+        imageUrl: "https://imgs.search.brave.com/o2jIeI82vIDcHk8URagH0FtWNNFvxM_qI7GMCYYxkjs/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9mYWNl/bWVkLmdyL2Fzc2V0/cy9pbWFnZXMvc2Vy/dmljZXMva29uZHVs/b21hdGEtcGVvcy1h/bnRyYXMuanBn",
         description: """
         Warts are small, rough, and grainy skin growths caused by the human papillomavirus (HPV). They often appear on hands, feet, or genitals.
         
@@ -402,7 +402,7 @@ let skinConditions: [SkinCondition] = [
     // 9. Melasma
     SkinCondition(
         name: "Melasma",
-        imageUrl: "https://picsum.photos/seed/melasma/500/500",
+        imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRoyQw_dCVHrSnwLEY2JTSh2KuIvcbjuKShjQ&s",
         description: """
         Melasma is a common skin condition that results in brown or grayish-brown patches, mainly on the face. It is more common in women and can be triggered by hormonal changes and sun exposure.
         
@@ -437,7 +437,7 @@ let skinConditions: [SkinCondition] = [
     // 10. Impetigo
     SkinCondition(
         name: "Impetigo",
-        imageUrl: "https://picsum.photos/seed/impetigo/500/500",
+        imageUrl: "https://imgs.search.brave.com/jU7f30Xl7SW6gXeNFNtfEnRfkVf5ZLUC_2CTYOZjVE8/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly93d3cu/c2h1dHRlcnN0b2Nr/LmNvbS9pbWFnZS1w/aG90by9jaGlsZHMt/YXJtLWltcGV0aWdv/LXNraW4tY29uZGl0/aW9uLTI2MG53LTE3/MTc5OTAxOTIuanBn",
         description: """
         Impetigo is a highly contagious bacterial skin infection, most common in children, that causes red sores, usually around the nose and mouth. These sores burst and develop honey-colored crusts.
         

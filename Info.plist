@@ -2,11 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>AyurScan needs your location to find nearby hospitals</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>AyurScan needs to save analysis results</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>AyurScan needs photo library access to select skin images</string>
+	<string>AyurScan needs photo library to select skin images</string>
 	<key>NSCameraUsageDescription</key>
-	<string>AyurScan needs camera access to capture skin images for AI analysis</string>
+	<string>AyurScan needs camera to scan your skin condition</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>AyurScan needs location to find nearby dermatologists and hospitals</string>
 </dict>
 </plist>

@@ -1,9 +1,10 @@
 // Hospital.swift
-// Hospital model - equivalent to hospital data in nearby_hospitals_screen.dart
+// Hospital/Clinic Model for Dermatologists & Skin Clinics
 // Location: AyurScan/Models/Hospital.swift
 
 import Foundation
 import CoreLocation
+import SwiftUI
 
 // MARK: - Hospital Model
 struct Hospital: Identifiable, Codable, Hashable {
@@ -11,8 +12,8 @@ struct Hospital: Identifiable, Codable, Hashable {
     let name: String
     let latitude: Double
     let longitude: Double
-    let distance: Double  // in meters
-    let type: String      // "General", "Emergency", "Clinic", "Specialty"
+    let distance: Double
+    let type: String  // "Dermatologist", "Cosmetic", "Hospital", "Clinic", "Specialist"
     let phone: String
     let rating: Double
     let website: String?
@@ -49,7 +50,7 @@ struct Hospital: Identifiable, Codable, Hashable {
         self.amenities = amenities
     }
     
-    // Simple initializer (for quick creation)
+    // Simple initializer
     init(
         name: String,
         latitude: Double,
@@ -69,13 +70,12 @@ struct Hospital: Identifiable, Codable, Hashable {
         self.rating = rating
         self.website = nil
         self.address = nil
-        self.isOpen24Hours = type == "Emergency"
+        self.isOpen24Hours = false
         self.amenities = []
     }
     
     // MARK: - Computed Properties
     
-    /// Returns formatted distance string
     var formattedDistance: String {
         if distance < 1000 {
             return "\(Int(distance))m"
@@ -84,17 +84,14 @@ struct Hospital: Identifiable, Codable, Hashable {
         }
     }
     
-    /// Returns CLLocationCoordinate2D for MapKit
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
     
-    /// Returns formatted rating string
     var formattedRating: String {
         String(format: "%.1f", rating)
     }
     
-    /// Returns phone number without formatting (for calling)
     var cleanPhoneNumber: String {
         phone.replacingOccurrences(of: "-", with: "")
              .replacingOccurrences(of: " ", with: "")
@@ -102,17 +99,42 @@ struct Hospital: Identifiable, Codable, Hashable {
              .replacingOccurrences(of: ")", with: "")
     }
     
-    /// Returns Maps URL for directions
     var mapsURL: URL? {
         URL(string: "maps://?daddr=\(latitude),\(longitude)")
     }
     
-    /// Returns tel URL for calling
     var phoneURL: URL? {
         URL(string: "tel://\(cleanPhoneNumber)")
     }
     
+    // MARK: - Type Properties
+    
+    var typeIcon: String {
+        switch type {
+        case "Dermatologist": return "stethoscope"
+        case "Cosmetic": return "sparkles"
+        case "Hospital": return "building.2.fill"
+        case "Clinic": return "cross.case.fill"
+        case "Specialist": return "person.badge.shield.checkmark.fill"
+        case "Emergency": return "staroflife.fill"
+        default: return "cross.circle.fill"
+        }
+    }
+    
+    var typeColor: Color {
+        switch type {
+        case "Dermatologist": return .teal
+        case "Cosmetic": return .pink
+        case "Hospital": return .blue
+        case "Clinic": return .orange
+        case "Specialist": return .purple
+        case "Emergency": return .red
+        default: return .gray
+        }
+    }
+    
     // MARK: - Hashable
+    
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
@@ -122,137 +144,31 @@ struct Hospital: Identifiable, Codable, Hashable {
     }
 }
 
-// MARK: - Hospital Type Enum (Optional - for type safety)
-enum HospitalType: String, CaseIterable, Codable {
-    case general = "General"
-    case emergency = "Emergency"
+// MARK: - Clinic Type Enum
+enum ClinicType: String, CaseIterable, Codable {
+    case all = "All"
+    case dermatologist = "Dermatologist"
+    case cosmetic = "Cosmetic"
+    case hospital = "Hospital"
     case clinic = "Clinic"
-    case specialty = "Specialty"
     
     var icon: String {
         switch self {
-        case .general: return "building.2.fill"
-        case .emergency: return "staroflife.fill"
+        case .all: return "square.grid.2x2.fill"
+        case .dermatologist: return "stethoscope"
+        case .cosmetic: return "sparkles"
+        case .hospital: return "building.2.fill"
         case .clinic: return "cross.case.fill"
-        case .specialty: return "heart.circle.fill"
         }
     }
     
-    var color: String {
+    var color: Color {
         switch self {
-        case .general: return "blue"
-        case .emergency: return "red"
-        case .clinic: return "orange"
-        case .specialty: return "purple"
+        case .all: return .gray
+        case .dermatologist: return .teal
+        case .cosmetic: return .pink
+        case .hospital: return .blue
+        case .clinic: return .orange
         }
     }
 }
-
-// MARK: - OSM Response Models (For parsing Overpass API)
-struct OSMResponse: Codable {
-    let elements: [OSMElement]
-}
-
-struct OSMElement: Codable {
-    let id: Int
-    let lat: Double?
-    let lon: Double?
-    let center: OSMCenter?
-    let tags: OSMTags?
-}
-
-struct OSMCenter: Codable {
-    let lat: Double
-    let lon: Double
-}
-
-struct OSMTags: Codable {
-    let name: String?
-    let phone: String?
-    let website: String?
-    let emergency: String?
-    let amenity: String?
-    let healthcareSpeciality: String?
-    let openingHours: String?
-    let addressStreet: String?
-    let addressCity: String?
-    
-    enum CodingKeys: String, CodingKey {
-        case name
-        case phone
-        case website
-        case emergency
-        case amenity
-        case healthcareSpeciality = "healthcare:speciality"
-        case openingHours = "opening_hours"
-        case addressStreet = "addr:street"
-        case addressCity = "addr:city"
-    }
-}
-
-// MARK: - Sample Hospitals Data (For testing)
-let sampleHospitals: [Hospital] = [
-    Hospital(
-        name: "Apollo Hospital",
-        latitude: 28.5672,
-        longitude: 77.2100,
-        distance: 850,
-        type: "General",
-        phone: "+91-11-2692-5858",
-        rating: 4.6
-    ),
-    Hospital(
-        name: "Max Emergency Care",
-        latitude: 28.5680,
-        longitude: 77.2105,
-        distance: 1200,
-        type: "Emergency",
-        phone: "+91-11-2651-5050",
-        rating: 4.8
-    ),
-    Hospital(
-        name: "Fortis Heart Institute",
-        latitude: 28.5690,
-        longitude: 77.2110,
-        distance: 2100,
-        type: "Specialty",
-        phone: "+91-11-4277-6222",
-        rating: 4.7
-    ),
-    Hospital(
-        name: "City Clinic",
-        latitude: 28.5700,
-        longitude: 77.2115,
-        distance: 650,
-        type: "Clinic",
-        phone: "+91-11-2345-6789",
-        rating: 4.2
-    ),
-    Hospital(
-        name: "AIIMS Emergency",
-        latitude: 28.5710,
-        longitude: 77.2120,
-        distance: 3500,
-        type: "Emergency",
-        phone: "+91-11-2658-8500",
-        rating: 4.9
-    ),
-    Hospital(
-        name: "Medanta Hospital",
-        latitude: 28.5720,
-        longitude: 77.2125,
-        distance: 4200,
-        type: "General",
-        phone: "+91-124-4141-414",
-        rating: 4.5
-    ),
-    Hospital(
-        name: "BLK Super Speciality",
-        latitude: 28.5730,
-        longitude: 77.2130,
-        distance: 2800,
-        type: "Specialty",
-        phone: "+91-11-3040-3040",
-        rating: 4.4
-    )
-]
