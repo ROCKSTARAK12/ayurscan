@@ -1,5 +1,5 @@
 // HospitalService.swift
-// Fetch Nearby Dermatologists & Skin Clinics
+// WITH CACHING - FINAL
 // Location: AyurScan/Services/HospitalService.swift
 
 import Foundation
@@ -14,47 +14,85 @@ class HospitalService: ObservableObject {
     @Published var error: HospitalError?
     
     private let overpassURL = "https://overpass-api.de/api/interpreter"
-    private let defaultRadius = 10000 // 10km for better results
+    private let defaultRadius = 10000
+    
+    // CACHING
+    private var cachedHospitals: [Hospital] = []
+    private var cachedLocation: CLLocation?
+    private var cacheTimestamp: Date?
+    private let cacheValidityDuration: TimeInterval = 30 * 60
+    private let locationThreshold: Double = 1000
     
     private init() {}
     
-    // MARK: - Fetch Dermatologists & Skin Clinics
+    // MARK: - Check Cache
+    private func isCacheValid(for latitude: Double, longitude: Double) -> Bool {
+        guard !cachedHospitals.isEmpty, let cachedLoc = cachedLocation, let timestamp = cacheTimestamp else { return false }
+        let cacheAge = Date().timeIntervalSince(timestamp)
+        if cacheAge > cacheValidityDuration { return false }
+        let newLocation = CLLocation(latitude: latitude, longitude: longitude)
+        if cachedLoc.distance(from: newLocation) > locationThreshold { return false }
+        return true
+    }
     
+    // MARK: - Load Hospitals
+    @MainActor
+    func loadHospitals(latitude: Double, longitude: Double, forceRefresh: Bool = false) async {
+        if !forceRefresh && isCacheValid(for: latitude, longitude: longitude) {
+            hospitals = cachedHospitals
+            isLoading = false
+            return
+        }
+        
+        isLoading = true
+        error = nil
+        
+        do {
+            let fetched = try await fetchNearbyDermatologists(latitude: latitude, longitude: longitude)
+            hospitals = fetched.isEmpty ? generateSampleDermatologists(latitude: latitude, longitude: longitude) : fetched.sorted { $0.distance < $1.distance }
+            cachedHospitals = hospitals
+            cachedLocation = CLLocation(latitude: latitude, longitude: longitude)
+            cacheTimestamp = Date()
+            isLoading = false
+        } catch {
+            hospitals = generateSampleDermatologists(latitude: latitude, longitude: longitude)
+            cachedHospitals = hospitals
+            cachedLocation = CLLocation(latitude: latitude, longitude: longitude)
+            cacheTimestamp = Date()
+            isLoading = false
+        }
+    }
+    
+    // MARK: - Refresh
+    @MainActor
+    func refreshHospitals(latitude: Double, longitude: Double) async {
+        cachedHospitals = []
+        cachedLocation = nil
+        cacheTimestamp = nil
+        await loadHospitals(latitude: latitude, longitude: longitude, forceRefresh: true)
+    }
+    
+    // MARK: - Fetch API
     func fetchNearbyDermatologists(latitude: Double, longitude: Double, radius: Int? = nil) async throws -> [Hospital] {
         let searchRadius = radius ?? defaultRadius
-        
-        // Query specifically for dermatologists, skin clinics, and hospitals with skin department
         let query = """
         [out:json][timeout:30];
         (
-          // Dermatologists
           node["healthcare"="doctor"]["healthcare:speciality"~"dermatology|skin"](around:\(searchRadius),\(latitude),\(longitude));
           way["healthcare"="doctor"]["healthcare:speciality"~"dermatology|skin"](around:\(searchRadius),\(latitude),\(longitude));
-          
-          // Skin Clinics
-          node["amenity"="clinic"]["healthcare:speciality"~"dermatology|skin"](around:\(searchRadius),\(latitude),\(longitude));
-          way["amenity"="clinic"]["healthcare:speciality"~"dermatology|skin"](around:\(searchRadius),\(latitude),\(longitude));
           node["amenity"="clinic"]["name"~"[Ss]kin|[Dd]erma|[Cc]osme"](around:\(searchRadius),\(latitude),\(longitude));
           way["amenity"="clinic"]["name"~"[Ss]kin|[Dd]erma|[Cc]osme"](around:\(searchRadius),\(latitude),\(longitude));
-          
-          // Hospitals (may have dermatology department)
           node["amenity"="hospital"](around:\(searchRadius),\(latitude),\(longitude));
           way["amenity"="hospital"](around:\(searchRadius),\(latitude),\(longitude));
-          
-          // General clinics
           node["amenity"="clinic"](around:\(searchRadius),\(latitude),\(longitude));
           way["amenity"="clinic"](around:\(searchRadius),\(latitude),\(longitude));
-          
-          // Doctors
           node["amenity"="doctors"](around:\(searchRadius),\(latitude),\(longitude));
           way["amenity"="doctors"](around:\(searchRadius),\(latitude),\(longitude));
         );
         out center;
         """
         
-        guard let url = URL(string: overpassURL) else {
-            throw HospitalError.invalidURL
-        }
+        guard let url = URL(string: overpassURL) else { throw HospitalError.invalidURL }
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -63,78 +101,23 @@ class HospitalService: ObservableObject {
         request.timeoutInterval = 30
         
         let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            throw HospitalError.serverError
-        }
-        
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else { throw HospitalError.serverError }
         return try parseOSMResponse(data, userLatitude: latitude, userLongitude: longitude)
     }
     
-    // MARK: - Fetch with CLLocation
-    
-    func fetchHospitals(for location: CLLocation, radius: Int? = nil) async throws -> [Hospital] {
-        return try await fetchNearbyDermatologists(
-            latitude: location.coordinate.latitude,
-            longitude: location.coordinate.longitude,
-            radius: radius
-        )
-    }
-    
-    // MARK: - Load Hospitals (Main Actor)
-    
-    @MainActor
-    func loadHospitals(latitude: Double, longitude: Double) async {
-        isLoading = true
-        error = nil
-        
-        do {
-            let fetchedHospitals = try await fetchNearbyDermatologists(latitude: latitude, longitude: longitude)
-            
-            if fetchedHospitals.isEmpty {
-                // If no results, use sample data for demo
-                hospitals = generateSampleDermatologists(latitude: latitude, longitude: longitude)
-            } else {
-                hospitals = fetchedHospitals.sorted { $0.distance < $1.distance }
-            }
-            isLoading = false
-        } catch let hospitalError as HospitalError {
-            // Use sample data on error for demo purposes
-            hospitals = generateSampleDermatologists(latitude: latitude, longitude: longitude)
-            error = nil // Don't show error, show sample data
-            isLoading = false
-        } catch {
-            hospitals = generateSampleDermatologists(latitude: latitude, longitude: longitude)
-            isLoading = false
-        }
-    }
-    
-    // MARK: - Parse OSM Response
-    
+    // MARK: - Parse Response
     private func parseOSMResponse(_ data: Data, userLatitude: Double, userLongitude: Double) throws -> [Hospital] {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let elements = json["elements"] as? [[String: Any]] else {
-            throw HospitalError.parsingFailed
-        }
+              let elements = json["elements"] as? [[String: Any]] else { throw HospitalError.parsingFailed }
         
         var hospitals: [Hospital] = []
         let userLocation = CLLocation(latitude: userLatitude, longitude: userLongitude)
         
         for element in elements {
-            var hospitalLat: Double?
-            var hospitalLon: Double?
-            
-            if let lat = element["lat"] as? Double, let lon = element["lon"] as? Double {
-                hospitalLat = lat
-                hospitalLon = lon
-            } else if let center = element["center"] as? [String: Any],
-                      let lat = center["lat"] as? Double,
-                      let lon = center["lon"] as? Double {
-                hospitalLat = lat
-                hospitalLon = lon
-            }
-            
-            guard let lat = hospitalLat, let lon = hospitalLon else { continue }
+            var lat: Double?, lon: Double?
+            if let l = element["lat"] as? Double, let lo = element["lon"] as? Double { lat = l; lon = lo }
+            else if let c = element["center"] as? [String: Any], let l = c["lat"] as? Double, let lo = c["lon"] as? Double { lat = l; lon = lo }
+            guard let hospitalLat = lat, let hospitalLon = lon else { continue }
             
             let tags = element["tags"] as? [String: Any]
             let name = tags?["name"] as? String ?? "Medical Facility"
@@ -145,101 +128,39 @@ class HospitalService: ObservableObject {
             let speciality = tags?["healthcare:speciality"] as? String
             let healthcare = tags?["healthcare"] as? String
             
-            let hospitalLocation = CLLocation(latitude: lat, longitude: lon)
-            let distance = userLocation.distance(from: hospitalLocation)
+            let distance = userLocation.distance(from: CLLocation(latitude: hospitalLat, longitude: hospitalLon))
+            let type = determineClinicType(name: name, emergency: emergency, amenity: amenity, speciality: speciality, healthcare: healthcare)
             
-            // Determine type based on tags
-            let type = determineClinicType(
-                name: name,
-                emergency: emergency,
-                amenity: amenity,
-                speciality: speciality,
-                healthcare: healthcare
-            )
-            
-            let rating = generateRating(for: type)
-            
-            // Build address from tags
             var addressParts: [String] = []
-            if let street = tags?["addr:street"] as? String { addressParts.append(street) }
-            if let city = tags?["addr:city"] as? String { addressParts.append(city) }
-            let address = addressParts.isEmpty ? nil : addressParts.joined(separator: ", ")
+            if let s = tags?["addr:street"] as? String { addressParts.append(s) }
+            if let c = tags?["addr:city"] as? String { addressParts.append(c) }
             
-            let hospital = Hospital(
-                name: name,
-                latitude: lat,
-                longitude: lon,
-                distance: distance,
-                type: type,
-                phone: phone,
-                rating: rating,
-                website: website,
-                address: address,
-                isOpen24Hours: emergency == "yes",
-                amenities: []
-            )
-            
-            hospitals.append(hospital)
+            hospitals.append(Hospital(name: name, latitude: hospitalLat, longitude: hospitalLon, distance: distance, type: type, phone: phone, rating: generateRating(for: type), website: website, address: addressParts.isEmpty ? nil : addressParts.joined(separator: ", "), isOpen24Hours: emergency == "yes", amenities: []))
         }
-        
         return hospitals
     }
     
-    // MARK: - Determine Clinic Type
-    
     private func determineClinicType(name: String, emergency: String?, amenity: String?, speciality: String?, healthcare: String?) -> String {
-        let nameLower = name.lowercased()
-        
-        // Check for dermatology/skin specific
-        if nameLower.contains("derma") || nameLower.contains("skin") ||
-           speciality?.lowercased().contains("derma") == true ||
-           speciality?.lowercased().contains("skin") == true {
-            return "Dermatologist"
-        }
-        
-        // Check for cosmetic
-        if nameLower.contains("cosme") || nameLower.contains("beauty") || nameLower.contains("aesthetic") {
-            return "Cosmetic"
-        }
-        
-        // Check for emergency
-        if emergency == "yes" {
-            return "Emergency"
-        }
-        
-        // Check for specialty
-        if speciality != nil || healthcare == "doctor" {
-            return "Specialist"
-        }
-        
-        // Check for clinic
-        if amenity == "clinic" || amenity == "doctors" {
-            return "Clinic"
-        }
-        
-        // Default to hospital
+        let n = name.lowercased()
+        if n.contains("derma") || n.contains("skin") || speciality?.lowercased().contains("derma") == true { return "Dermatologist" }
+        if n.contains("cosme") || n.contains("beauty") || n.contains("aesthetic") { return "Cosmetic" }
+        if emergency == "yes" { return "Emergency" }
+        if speciality != nil || healthcare == "doctor" { return "Specialist" }
+        if amenity == "clinic" || amenity == "doctors" { return "Clinic" }
         return "Hospital"
     }
     
-    // MARK: - Generate Rating
-    
     private func generateRating(for type: String) -> Double {
         switch type {
-        case "Dermatologist":
-            return Double.random(in: 4.2...5.0)
-        case "Cosmetic":
-            return Double.random(in: 4.0...4.8)
-        case "Hospital":
-            return Double.random(in: 3.8...4.7)
-        default:
-            return Double.random(in: 3.5...4.5)
+        case "Dermatologist": return Double.random(in: 4.2...5.0)
+        case "Cosmetic": return Double.random(in: 4.0...4.8)
+        case "Hospital": return Double.random(in: 3.8...4.7)
+        default: return Double.random(in: 3.5...4.5)
         }
     }
     
-    // MARK: - Generate Sample Data (Fallback)
-    
     private func generateSampleDermatologists(latitude: Double, longitude: Double) -> [Hospital] {
-        let sampleData: [(name: String, type: String, latOffset: Double, lonOffset: Double)] = [
+        let samples: [(String, String, Double, Double)] = [
             ("Dr. Sharma Skin Clinic", "Dermatologist", 0.008, 0.005),
             ("Apollo Dermatology Center", "Dermatologist", 0.012, -0.008),
             ("Kaya Skin Clinic", "Cosmetic", -0.006, 0.010),
@@ -251,75 +172,27 @@ class HospitalService: ObservableObject {
             ("Medanta Skin Institute", "Hospital", -0.030, 0.008),
             ("SkinFirst Clinic", "Clinic", 0.005, -0.015)
         ]
-        
-        let userLocation = CLLocation(latitude: latitude, longitude: longitude)
-        
-        return sampleData.enumerated().map { index, data in
-            let hospitalLat = latitude + data.latOffset
-            let hospitalLon = longitude + data.lonOffset
-            let hospitalLocation = CLLocation(latitude: hospitalLat, longitude: hospitalLon)
-            let distance = userLocation.distance(from: hospitalLocation)
-            
-            return Hospital(
-                name: data.name,
-                latitude: hospitalLat,
-                longitude: hospitalLon,
-                distance: distance,
-                type: data.type,
-                phone: "+91-\(Int.random(in: 7000000000...9999999999))",
-                rating: generateRating(for: data.type)
-            )
+        let userLoc = CLLocation(latitude: latitude, longitude: longitude)
+        return samples.map { name, type, latOff, lonOff in
+            let hLat = latitude + latOff, hLon = longitude + lonOff
+            return Hospital(name: name, latitude: hLat, longitude: hLon, distance: userLoc.distance(from: CLLocation(latitude: hLat, longitude: hLon)), type: type, phone: "+91-\(Int.random(in: 7000000000...9999999999))", rating: generateRating(for: type))
         }.sorted { $0.distance < $1.distance }
     }
     
-    // MARK: - Filter Methods
-    
-    func filterHospitals(by type: String) -> [Hospital] {
-        guard type != "All" else { return hospitals }
-        return hospitals.filter { $0.type == type }
-    }
-    
-    func searchHospitals(query: String) -> [Hospital] {
-        guard !query.isEmpty else { return hospitals }
-        return hospitals.filter { $0.name.localizedCaseInsensitiveContains(query) }
-    }
-    
-    func filterAndSearch(type: String, query: String) -> [Hospital] {
-        var result = hospitals
-        
-        if type != "All" {
-            result = result.filter { $0.type == type }
-        }
-        
-        if !query.isEmpty {
-            result = result.filter { $0.name.localizedCaseInsensitiveContains(query) }
-        }
-        
-        return result.sorted { $0.distance < $1.distance }
-    }
-    
-    func getNearestDermatologist() -> Hospital? {
-        return hospitals.filter { $0.type == "Dermatologist" }.min { $0.distance < $1.distance }
-    }
+    func filterHospitals(by type: String) -> [Hospital] { type == "All" ? hospitals : hospitals.filter { $0.type == type } }
+    func searchHospitals(query: String) -> [Hospital] { query.isEmpty ? hospitals : hospitals.filter { $0.name.localizedCaseInsensitiveContains(query) } }
 }
 
-// MARK: - Hospital Error
 enum HospitalError: LocalizedError {
-    case invalidURL
-    case serverError
-    case parsingFailed
-    case noResults
-    case locationRequired
-    case unknown
-    
+    case invalidURL, serverError, parsingFailed, noResults, locationRequired, unknown
     var errorDescription: String? {
         switch self {
         case .invalidURL: return "Invalid API URL."
-        case .serverError: return "Server error. Please try again later."
+        case .serverError: return "Server error."
         case .parsingFailed: return "Failed to parse data."
-        case .noResults: return "No dermatologists found nearby."
-        case .locationRequired: return "Location is required to find nearby clinics."
-        case .unknown: return "An unknown error occurred."
+        case .noResults: return "No dermatologists found."
+        case .locationRequired: return "Location required."
+        case .unknown: return "Unknown error."
         }
     }
 }
