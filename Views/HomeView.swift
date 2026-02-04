@@ -1,564 +1,635 @@
-// HomeView.swift
-// Main camera + analysis screen
-// Location: AyurScan/Views/HomeView.swift
+    // HomeView.swift - FINAL FIXED
+    // Replace your entire HomeView.swift with this
+    // Location: AyurScan/Views/HomeView.swift
 
-import SwiftUI
-import PhotosUI
-import Combine
+    import SwiftUI
+    import PhotosUI
 
-struct HomeView: View {
-    @EnvironmentObject var appState: AppState
-    
-    @State private var selectedItem: PhotosPickerItem?
-    @State private var selectedImage: UIImage?
-    @State private var showCamera = false
-    @State private var showFullAnalysis = false
-    @State private var diagnosisText = "Ready to analyze your skin ✨"
-    @State private var isAnalyzing = false
-    @State private var showConditionsSheet = false
-    @State private var showHospitalsSheet = false
-    
-    @State private var headerOpacity: Double = 0
-    @State private var cameraViewOffset: CGFloat = 50
-    @State private var buttonsOffset: CGFloat = 100
-    @State private var pulseAnimation = false
-    
-    var body: some View {
-        NavigationStack {
+    struct HomeView: View {
+        @EnvironmentObject var appState: AppState
+        
+        @State private var selectedItem: PhotosPickerItem?
+        @State private var selectedImage: UIImage?
+        @State private var showCamera = false
+        @State private var showFullAnalysis = false
+        @State private var diagnosisText = "Ready to analyze your skin ✨"
+        @State private var isAnalyzing = false
+        
+        @State private var headerOpacity: Double = 0
+        @State private var cameraViewOffset: CGFloat = 50
+        @State private var buttonsOffset: CGFloat = 100
+        @State private var pulseAnimation = false
+        
+        var body: some View {
+            NavigationStack {
+                ZStack {
+                    LinearGradient(colors: [Color.blue.opacity(0.05), Color.purple.opacity(0.05)], startPoint: .topLeading, endPoint: .bottomTrailing).ignoresSafeArea()
+                    
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 20) {
+                            headerSection.opacity(headerOpacity)
+                            imagePreviewSection.offset(y: cameraViewOffset)
+                            analysisResultSection
+                            actionButtonsSection.offset(y: buttonsOffset)
+                            footerSection
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                    }
+                }
+                .navigationBarHidden(true)
+                // ⭐ FIXED: Using CustomCameraView instead of CameraView
+                .sheet(isPresented: $showCamera) {
+                    CustomCameraView(capturedImage: $selectedImage)
+                }
+                .sheet(isPresented: $showFullAnalysis) {
+                    FullAnalysisView(analysis: diagnosisText, image: selectedImage)
+                }
+                .onAppear { startAnimations() }
+                .onChange(of: selectedImage) { _, newImage in
+                    if newImage != nil {
+                        diagnosisText = "Perfect! Your image is ready for AI analysis 🔬"
+                    }
+                }
+            }
+        }
+        
+        // MARK: - Header
+        private var headerSection: some View {
+            HStack {
+                HStack(spacing: 10) {
+                    Image(systemName: "heart.text.square.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    Text("AyurScan")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                }
+                .padding(14)
+                .background(.ultraThinMaterial)
+                .cornerRadius(16)
+                
+                Spacer()
+                
+                HStack(spacing: 8) {
+                    NavigationLink(destination: HistoryView()) {
+                        Image(systemName: "clock.fill").font(.system(size: 18)).foregroundColor(.blue)
+                            .frame(width: 44, height: 44).background(.ultraThinMaterial).cornerRadius(12)
+                    }
+                    NavigationLink(destination: SettingsView()) {
+                        Image(systemName: "gearshape.fill").font(.system(size: 18)).foregroundColor(.blue)
+                            .frame(width: 44, height: 44).background(.ultraThinMaterial).cornerRadius(12)
+                    }
+                    if selectedImage != nil {
+                        Button(action: clearImage) {
+                            Image(systemName: "xmark.circle.fill").font(.system(size: 18)).foregroundColor(.red)
+                                .frame(width: 44, height: 44).background(.ultraThinMaterial).cornerRadius(12)
+                        }
+                    }
+                }
+            }
+        }
+        
+        // MARK: - Image Preview
+        private var imagePreviewSection: some View {
             ZStack {
-                LinearGradient(
-                    colors: [Color.blue.opacity(0.05), Color.purple.opacity(0.05)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-                
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-                        headerSection.opacity(headerOpacity)
-                        imagePreviewSection.offset(y: cameraViewOffset)
-                        analysisResultSection
-                        actionButtonsSection.offset(y: buttonsOffset)
-                        footerSection
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                }
-            }
-            .navigationBarHidden(true)
-            .sheet(isPresented: $showCamera) {
-                CameraView(image: $selectedImage)
-            }
-            .sheet(isPresented: $showFullAnalysis) {
-                FullAnalysisView(analysis: diagnosisText, image: selectedImage)
-            }
-            .onAppear { startAnimations() }
-        }
-    }
-    
-    // MARK: - Header Section
-    private var headerSection: some View {
-        HStack {
-            HStack(spacing: 10) {
-                Image(systemName: "heart.text.square.fill")
-                    .font(.system(size: 28))
-                    .foregroundStyle(LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
-                
-                Text("AyurScan")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
-            }
-            .padding(14)
-            .background(.ultraThinMaterial)
-            .cornerRadius(16)
-            
-            Spacer()
-            
-            HStack(spacing: 8) {
-                NavigationLink(destination: HistoryView()) {
-                    Image(systemName: "clock.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(.blue)
-                        .frame(width: 44, height: 44)
-                        .background(.ultraThinMaterial)
-                        .cornerRadius(12)
-                }
-                
-                NavigationLink(destination: SettingsView()) {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(.blue)
-                        .frame(width: 44, height: 44)
-                        .background(.ultraThinMaterial)
-                        .cornerRadius(12)
-                }
-                
-                if selectedImage != nil {
-                    Button(action: clearImage) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 18))
-                            .foregroundColor(.red)
-                            .frame(width: 44, height: 44)
-                            .background(.ultraThinMaterial)
-                            .cornerRadius(12)
-                    }
-                }
-            }
-        }
-    }
-    
-    // MARK: - Image Preview Section
-    private var imagePreviewSection: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 24)
-                .fill(LinearGradient(colors: [Color.blue.opacity(0.8), Color.purple.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(height: 300)
-                .shadow(color: .blue.opacity(0.3), radius: 20, x: 0, y: 10)
-            
-            if let image = selectedImage {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(LinearGradient(colors: [Color.blue.opacity(0.8), Color.purple.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
                     .frame(height: 300)
-                    .clipShape(RoundedRectangle(cornerRadius: 24))
-            } else {
-                VStack(spacing: 20) {
-                    ZStack {
-                        Circle()
-                            .stroke(Color.cyan.opacity(0.5), lineWidth: 3)
-                            .frame(width: 100, height: 100)
-                            .scaleEffect(pulseAnimation ? 1.3 : 1.0)
-                            .opacity(pulseAnimation ? 0.0 : 0.8)
-                        
-                        Image(systemName: "viewfinder")
-                            .font(.system(size: 60, weight: .light))
+                    .shadow(color: .blue.opacity(0.3), radius: 20, x: 0, y: 10)
+                
+                if let image = selectedImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(height: 300)
+                        .clipShape(RoundedRectangle(cornerRadius: 24))
+                } else {
+                    VStack(spacing: 20) {
+                        ZStack {
+                            Circle()
+                                .stroke(Color.cyan.opacity(0.5), lineWidth: 3)
+                                .frame(width: 100, height: 100)
+                                .scaleEffect(pulseAnimation ? 1.3 : 1.0)
+                                .opacity(pulseAnimation ? 0.0 : 0.8)
+                            Image(systemName: "viewfinder")
+                                .font(.system(size: 60, weight: .light))
+                                .foregroundColor(.white.opacity(0.9))
+                        }
+                        Text("Position skin area in frame")
+                            .font(.system(size: 15, weight: .medium))
                             .foregroundColor(.white.opacity(0.9))
+                            .padding(.horizontal, 24).padding(.vertical, 14)
+                            .background(.ultraThinMaterial)
+                            .cornerRadius(20)
                     }
-                    
-                    Text("Position skin area in frame")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.white.opacity(0.9))
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 14)
-                        .background(.ultraThinMaterial)
-                        .cornerRadius(20)
                 }
             }
         }
-    }
-    
-    // MARK: - Analysis Result Section
-    private var analysisResultSection: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 12) {
-                Image(systemName: "brain.head.profile")
-                    .font(.system(size: 24))
-                    .foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+        
+        // MARK: - Analysis Result
+        private var analysisResultSection: some View {
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(spacing: 12) {
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 24))
+                        .foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    Text("Medical Analysis").font(.system(size: 22, weight: .bold))
+                }
                 
-                Text("Medical Analysis")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(.primary)
+                if isAnalyzing {
+                    HStack(spacing: 16) {
+                        ProgressView().scaleEffect(1.3)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("🧠 AI Doctor analyzing...").font(.system(size: 15, weight: .medium))
+                            Text("Processing medical assessment...").font(.system(size: 13)).foregroundColor(.secondary)
+                        }
+                    }
+                } else if isValidDiagnosis() {
+                    Button { showFullAnalysis = true } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "doc.text.fill").font(.system(size: 18))
+                            Text("View Full Advice").font(.system(size: 16, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity).frame(height: 52)
+                        .background(LinearGradient(colors: [.teal, .green], startPoint: .leading, endPoint: .trailing))
+                        .cornerRadius(14)
+                    }
+                } else {
+                    Text(diagnosisText).font(.system(size: 15)).foregroundColor(.secondary)
+                }
             }
-            
-            if isAnalyzing {
-                HStack(spacing: 16) {
-                    ProgressView().scaleEffect(1.3)
+            .padding(20)
+            .background(.ultraThinMaterial)
+            .cornerRadius(20)
+        }
+        
+        // MARK: - Action Buttons
+        private var actionButtonsSection: some View {
+            VStack(spacing: 14) {
+                HStack(spacing: 12) {
+                    ActionButton(title: "Capture", icon: "camera.fill", colors: [.blue, .blue.opacity(0.8)], isDisabled: isAnalyzing) {
+                        showCamera = true
+                    }
                     
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("🧠 AI Doctor analyzing your skin...")
-                            .font(.system(size: 15, weight: .medium))
-                        Text("Processing medical assessment...")
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
+                    PhotosPicker(selection: $selectedItem, matching: .images) {
+                        ActionButtonLabel(title: "Gallery", icon: "photo.fill", colors: [.green, .green.opacity(0.8)], isDisabled: isAnalyzing)
+                    }
+                    .disabled(isAnalyzing)
+                    .onChange(of: selectedItem) { _, newVal in loadImage(from: newVal) }
+                    
+                    NavigationLink(destination: DoctorsListView()) {
+                        ActionButtonLabel(title: "Doctors", icon: "stethoscope", colors: [.teal, .teal.opacity(0.8)], isDisabled: false)
+                    }
+                    
+                    NavigationLink(destination: NearbyHospitalsView()) {
+                        ActionButtonLabel(title: "Hospitals", icon: "cross.circle.fill", colors: [.red, .red.opacity(0.8)], isDisabled: false)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 8)
                 
-            } else if isValidDiagnosis() {
-                Button(action: { showFullAnalysis = true }) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "doc.text.fill")
-                            .font(.system(size: 18))
-                        Text("View Full Advice")
-                            .font(.system(size: 16, weight: .semibold))
+                Button(action: analyzeImage) {
+                    HStack(spacing: 12) {
+                        if isAnalyzing {
+                            ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .white)).scaleEffect(0.9)
+                        } else {
+                            Image(systemName: "brain.head.profile").font(.system(size: 20))
+                        }
+                        Text(isAnalyzing ? "Analyzing..." : "AI Medical Analysis").font(.system(size: 18, weight: .semibold))
                     }
                     .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .background(LinearGradient(colors: [Color.teal, Color.green], startPoint: .leading, endPoint: .trailing))
-                    .cornerRadius(14)
-                    .shadow(color: .teal.opacity(0.4), radius: 10, x: 0, y: 5)
+                    .frame(maxWidth: .infinity).frame(height: 58)
+                    .background(LinearGradient(colors: (selectedImage == nil || isAnalyzing) ? [.gray, .gray.opacity(0.8)] : [.purple, .purple.opacity(0.8)], startPoint: .leading, endPoint: .trailing))
+                    .cornerRadius(18)
                 }
-            } else {
-                Text(diagnosisText)
-                    .font(.system(size: 15))
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                .disabled(selectedImage == nil || isAnalyzing)
             }
         }
-        .padding(20)
-        .background(.ultraThinMaterial)
-        .cornerRadius(20)
-        .shadow(color: .black.opacity(0.05), radius: 15, x: 0, y: 5)
-    }
-    
-    // MARK: - Action Buttons Section
-    private var actionButtonsSection: some View {
-        VStack(spacing: 14) {
-            HStack(spacing: 12) {
-                ActionButton(title: "Capture", icon: "camera.fill", colors: [.blue, .blue.opacity(0.8)], isDisabled: isAnalyzing) {
-                    showCamera = true
-                }
-                
-                PhotosPicker(selection: $selectedItem, matching: .images) {
-                    ActionButtonLabel(title: "Gallery", icon: "photo.fill", colors: [.green, .green.opacity(0.8)], isDisabled: isAnalyzing)
-                }
-                .disabled(isAnalyzing)
-                .onChange(of: selectedItem) { oldVal, newVal in loadImage(from: newVal) }
-                
-                NavigationLink(destination: SkinConditionsView()) {
-                    ActionButtonLabel(title: "Conditions", icon: "list.clipboard.fill", colors: [.purple, .purple.opacity(0.8)], isDisabled: false)
-                }
-                
-                NavigationLink(destination: NearbyHospitalsView()) {
-                    ActionButtonLabel(title: "Hospitals", icon: "cross.circle.fill", colors: [.red, .red.opacity(0.8)], isDisabled: false)
-                }
+        
+        private var footerSection: some View {
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles").foregroundColor(.orange)
+                Text("Powered by Advanced AI").font(.system(size: 13, weight: .medium)).foregroundColor(.secondary).italic()
             }
-            
-            Button(action: analyzeImage) {
-                HStack(spacing: 12) {
-                    if isAnalyzing {
-                        ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .white)).scaleEffect(0.9)
-                    } else {
-                        Image(systemName: "brain.head.profile").font(.system(size: 20))
-                    }
-                    Text(isAnalyzing ? "Analyzing..." : "AI Medical Analysis")
-                        .font(.system(size: 18, weight: .semibold))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 58)
-                .background(LinearGradient(colors: (selectedImage == nil || isAnalyzing) ? [.gray, .gray.opacity(0.8)] : [.purple, .purple.opacity(0.8)], startPoint: .leading, endPoint: .trailing))
-                .cornerRadius(18)
-                .shadow(color: (selectedImage == nil || isAnalyzing) ? .clear : .purple.opacity(0.4), radius: 12, x: 0, y: 6)
-            }
-            .disabled(selectedImage == nil || isAnalyzing)
+            .padding(.top, 8).padding(.bottom, 20)
         }
-    }
-    
-    private var footerSection: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "sparkles").foregroundColor(.orange)
-            Text("Powered by Advanced AI • Mistral Vision")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.secondary)
-                .italic()
+        
+        // MARK: - Functions
+        private func startAnimations() {
+            withAnimation(.easeOut(duration: 0.5)) { headerOpacity = 1.0 }
+            withAnimation(.spring(response: 0.7, dampingFraction: 0.8).delay(0.2)) { cameraViewOffset = 0 }
+            withAnimation(.spring(response: 0.7, dampingFraction: 0.8).delay(0.4)) { buttonsOffset = 0 }
+            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: false)) { pulseAnimation = true }
         }
-        .padding(.top, 8)
-        .padding(.bottom, 20)
-    }
-    
-    // MARK: - Helper Functions
-    private func startAnimations() {
-        withAnimation(.easeOut(duration: 0.5)) { headerOpacity = 1.0 }
-        withAnimation(.spring(response: 0.7, dampingFraction: 0.8).delay(0.2)) { cameraViewOffset = 0 }
-        withAnimation(.spring(response: 0.7, dampingFraction: 0.8).delay(0.4)) { buttonsOffset = 0 }
-        withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: false)) { pulseAnimation = true }
-    }
-    
-    private func loadImage(from item: PhotosPickerItem?) {
-        guard let item = item else { return }
-        item.loadTransferable(type: Data.self) { result in
-            switch result {
-            case .success(let data):
-                if let data = data, let image = UIImage(data: data) {
+        
+        // ⭐ FIXED: Gallery image now processed for API
+        private func loadImage(from item: PhotosPickerItem?) {
+            guard let item = item else { return }
+            item.loadTransferable(type: Data.self) { result in
+                if case .success(let data) = result, let data = data, let img = UIImage(data: data) {
                     DispatchQueue.main.async {
-                        self.selectedImage = image
-                        self.diagnosisText = "Perfect! Your image is ready for AI analysis 🔬"
+                        self.selectedImage = img.preparedForAPI()
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     }
                 }
-            case .failure(let error):
-                print("Error loading image: \(error)")
-                DispatchQueue.main.async {
-                    self.diagnosisText = "❌ Failed to load image. Please try again."
-                }
             }
-        }
-    }
-    
-    private func clearImage() {
-        withAnimation(.spring()) {
-            selectedImage = nil
-            diagnosisText = "Ready to analyze your skin ✨"
-            selectedItem = nil
-        }
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-    }
-    
-    private func analyzeImage() {
-        guard let image = selectedImage else {
-            diagnosisText = "❌ Please capture or select an image first"
-            return
         }
         
-        isAnalyzing = true
-        diagnosisText = "🧠 AI Doctor analyzing your skin..."
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        private func clearImage() {
+            withAnimation(.spring()) {
+                selectedImage = nil
+                diagnosisText = "Ready to analyze your skin ✨"
+                selectedItem = nil
+            }
+        }
         
-        Task {
-            do {
-                let result = try await GeminiService.shared.analyzeImage(image)
-                await MainActor.run {
-                    diagnosisText = result
-                    isAnalyzing = false
-                    StorageService.shared.saveAnalysis(image: image, diagnosis: diagnosisText)
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
-                }
-            } catch {
-                await MainActor.run {
-                    diagnosisText = "❌ Analysis failed: \(error.localizedDescription)"
-                    isAnalyzing = false
-                    UINotificationFeedbackGenerator().notificationOccurred(.error)
-                }
-            }
-        }
-    }
-    
-    private func isValidDiagnosis() -> Bool {
-        diagnosisText.contains("SEVERITY") || diagnosisText.contains("OBSERVED") || diagnosisText.contains("━━")
-    }
-}
-
-// MARK: - Action Button Components
-struct ActionButton: View {
-    let title: String
-    let icon: String
-    let colors: [Color]
-    var isDisabled: Bool = false
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            ActionButtonLabel(title: title, icon: icon, colors: colors, isDisabled: isDisabled)
-        }
-        .disabled(isDisabled)
-    }
-}
-
-struct ActionButtonLabel: View {
-    let title: String
-    let icon: String
-    let colors: [Color]
-    var isDisabled: Bool = false
-    
-    var body: some View {
-        VStack(spacing: 6) {
-            Image(systemName: icon).font(.system(size: 20))
-            Text(title).font(.system(size: 11, weight: .semibold))
-        }
-        .foregroundColor(.white)
-        .frame(maxWidth: .infinity)
-        .frame(height: 65)
-        .background(LinearGradient(colors: isDisabled ? [.gray, .gray.opacity(0.8)] : colors, startPoint: .top, endPoint: .bottom))
-        .cornerRadius(14)
-        .shadow(color: isDisabled ? .clear : colors[0].opacity(0.4), radius: 8, x: 0, y: 4)
-    }
-}
-
-// MARK: - Full Analysis View (Beautiful Formatted)
-struct FullAnalysisView: View {
-    let analysis: String
-    let image: UIImage?
-    @Environment(\.dismiss) var dismiss
-    
-    var body: some View {
-        NavigationStack {
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 16) {
-                    // Header Card
-                    headerCard
-                    
-                    // Image Preview
-                    if let img = image {
-                        Image(uiImage: img)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(height: 180)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                            .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
-                    }
-                    
-                    // Parsed Sections
-                    ForEach(parseAnalysisSections(), id: \.title) { section in
-                        SectionCard(section: section)
-                    }
-                    
-                    // Disclaimer
-                    disclaimerCard
-                }
-                .padding(16)
-            }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Medical Analysis")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .fontWeight(.semibold)
-                }
-            }
-        }
-    }
-    
-    private var headerCard: some View {
-        HStack {
-            Image(systemName: "brain.head.profile")
-                .font(.title2)
-                .foregroundColor(.teal)
-                .padding(12)
-                .background(Color.teal.opacity(0.15))
-                .cornerRadius(12)
+        private func analyzeImage() {
+            guard let image = selectedImage else { return }
+            isAnalyzing = true
+            diagnosisText = "🧠 AI Doctor analyzing..."
             
-            VStack(alignment: .leading, spacing: 4) {
-                Text("AI Dermatological Report")
-                    .font(.headline)
-                Text("Professional Assessment")
+            Task {
+                do {
+                    let result = try await GeminiService.shared.analyzeImage(image)
+                    await MainActor.run {
+                        diagnosisText = result
+                        isAnalyzing = false
+                        StorageService.shared.saveAnalysis(image: image, diagnosis: diagnosisText)
+                        UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    }
+                } catch {
+                    await MainActor.run {
+                        diagnosisText = "❌ Analysis failed: \(error.localizedDescription)"
+                        isAnalyzing = false
+                    }
+                }
+            }
+        }
+        
+        private func isValidDiagnosis() -> Bool {
+            diagnosisText.contains("SEVERITY") || diagnosisText.contains("OBSERVED") || diagnosisText.contains("━━")
+        }
+    }
+
+    // MARK: - Action Button Components
+    struct ActionButton: View {
+        let title: String, icon: String, colors: [Color]
+        var isDisabled: Bool = false
+        let action: () -> Void
+        
+        var body: some View {
+            Button(action: action) {
+                ActionButtonLabel(title: title, icon: icon, colors: colors, isDisabled: isDisabled)
+            }.disabled(isDisabled)
+        }
+    }
+
+    struct ActionButtonLabel: View {
+        let title: String, icon: String, colors: [Color]
+        var isDisabled: Bool = false
+        
+        var body: some View {
+            VStack(spacing: 6) {
+                Image(systemName: icon).font(.system(size: 20))
+                Text(title).font(.system(size: 11, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity).frame(height: 65)
+            .background(LinearGradient(colors: isDisabled ? [.gray] : colors, startPoint: .top, endPoint: .bottom))
+            .cornerRadius(14)
+        }
+    }
+
+    // MARK: - Full Analysis View
+    // MARK: - Full Analysis View (Beautiful Formatted)
+    // Replace the existing FullAnalysisView in HomeView.swift with this
+
+    struct FullAnalysisView: View {
+        let analysis: String
+        let image: UIImage?
+        @Environment(\.dismiss) var dismiss
+        
+        var body: some View {
+            NavigationStack {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        // Image Header
+                        if let img = image {
+                            ZStack(alignment: .bottomLeading) {
+                                Image(uiImage: img)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(height: 200)
+                                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                                
+                                // Gradient overlay
+                                LinearGradient(colors: [.clear, .black.opacity(0.5)], startPoint: .top, endPoint: .bottom)
+                                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                                
+                                // Badge
+                                HStack(spacing: 6) {
+                                    Image(systemName: "checkmark.seal.fill")
+                                    Text("AI Analyzed")
+                                }
+                                .font(.caption.bold())
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(20)
+                                .padding(12)
+                            }
+                        }
+                        
+                        // Parsed Content Cards
+                        ForEach(parseAnalysis(), id: \.title) { section in
+                            SectionCardView(section: section)
+                        }
+                        
+                        // Disclaimer
+                        disclaimerView
+                    }
+                    .padding(16)
+                }
+                .background(Color(.systemGroupedBackground))
+                .navigationTitle("Analysis Report")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { dismiss() }
+                            .fontWeight(.semibold)
+                            .foregroundColor(.teal)
+                    }
+                }
+            }
+        }
+        
+        // MARK: - Disclaimer View
+        private var disclaimerView: some View {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                    .font(.title3)
+                
+                Text("This AI analysis is for informational purposes only. Always consult a board-certified dermatologist for accurate diagnosis and treatment.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
-            Spacer()
-            
-            HStack(spacing: 4) {
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.caption)
-                Text("Verified")
-                    .font(.caption.bold())
-            }
-            .foregroundColor(.white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color.green)
-            .cornerRadius(12)
+            .padding(16)
+            .background(Color.orange.opacity(0.1))
+            .cornerRadius(16)
         }
-        .padding(16)
-        .background(Color.blue.opacity(0.08))
-        .cornerRadius(16)
-    }
-    
-    private var disclaimerCard: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.orange)
+        
+        // MARK: - Parse Analysis into Sections
+        private func parseAnalysis() -> [AnalysisSection] {
+            var sections: [AnalysisSection] = []
+            let text = analysis
             
-            Text("This AI analysis is for informational purposes only. Always consult a qualified dermatologist for proper diagnosis and treatment.")
-                .font(.caption)
-                .foregroundColor(.orange.opacity(0.9))
-        }
-        .padding(16)
-        .background(Color.orange.opacity(0.1))
-        .cornerRadius(12)
-    }
-    
-    // MARK: - Parse Analysis into Sections
-    private func parseAnalysisSections() -> [AnalysisSection] {
-        var sections: [AnalysisSection] = []
-        
-        // Define section patterns
-        let sectionPatterns: [(icon: String, title: String, color: Color, keywords: [String])] = [
-            ("chart.bar.fill", "Severity", .red, ["SEVERITY", "📊"]),
-            ("eye.fill", "What I Observed", .blue, ["OBSERVED", "🔍"]),
-            ("stethoscope", "Possible Conditions", .purple, ["POSSIBLE CONDITIONS", "🩺"]),
-            ("checklist", "What You Should Do", .green, ["SHOULD DO", "💊", "RECOMMENDED"]),
-            ("leaf.fill", "Ayurvedic Remedies", .orange, ["AYURVEDIC", "🌿"]),
-            ("sparkles", "Skincare Tips", .pink, ["SKINCARE", "TIPS", "✨"])
-        ]
-        
-        // Split by section dividers
-        let lines = analysis.components(separatedBy: "\n")
-        var currentSection: (title: String, icon: String, color: Color, content: [String])? = nil
-        
-        for line in lines {
-            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
-            
-            // Skip empty lines and dividers
-            if trimmedLine.isEmpty || trimmedLine.contains("━━") || trimmedLine.contains("---") {
-                continue
+            // Severity
+            if let severity = extractSection(from: text, containing: ["SEVERITY"]) {
+                let level = extractSeverityLevel(from: severity)
+                sections.append(AnalysisSection(
+                    title: "Severity Assessment",
+                    icon: "chart.bar.fill",
+                    color: severityColor(level),
+                    type: .severity(level: level)
+                ))
             }
             
-            // Check if this line starts a new section
-            var foundSection = false
-            for pattern in sectionPatterns {
-                if pattern.keywords.contains(where: { trimmedLine.uppercased().contains($0) }) {
-                    // Save previous section
-                    if let current = currentSection, !current.content.isEmpty {
-                        sections.append(AnalysisSection(
-                            icon: current.icon,
-                            title: current.title,
-                            color: current.color,
-                            content: current.content
-                        ))
-                    }
-                    // Start new section
-                    currentSection = (pattern.title, pattern.icon, pattern.color, [])
-                    foundSection = true
-                    break
+            // What I Observed
+            if let observed = extractSection(from: text, containing: ["OBSERVED", "🔍"]) {
+                let points = extractBulletPoints(from: observed)
+                if !points.isEmpty {
+                    sections.append(AnalysisSection(
+                        title: "What Was Observed",
+                        icon: "eye.fill",
+                        color: .blue,
+                        type: .bullets(points)
+                    ))
                 }
             }
             
-            // Add content to current section
-            if !foundSection, currentSection != nil {
-                let cleanedLine = trimmedLine
+            // Possible Conditions
+            if let conditions = extractSection(from: text, containing: ["POSSIBLE CONDITIONS", "🩺"]) {
+                let items = extractConditions(from: conditions)
+                if !items.isEmpty {
+                    sections.append(AnalysisSection(
+                        title: "Possible Conditions",
+                        icon: "stethoscope",
+                        color: .purple,
+                        type: .conditions(items)
+                    ))
+                }
+            }
+            
+            // What You Should Do
+            if let actions = extractSection(from: text, containing: ["SHOULD DO", "💊", "RECOMMENDED"]) {
+                let points = extractBulletPoints(from: actions)
+                if !points.isEmpty {
+                    sections.append(AnalysisSection(
+                        title: "Recommended Actions",
+                        icon: "checklist",
+                        color: .green,
+                        type: .numbered(points)
+                    ))
+                }
+            }
+            
+            // Ayurvedic Remedies
+            if let ayurvedic = extractSection(from: text, containing: ["AYURVEDIC", "🌿"]) {
+                let remedies = extractRemedies(from: ayurvedic)
+                if !remedies.isEmpty {
+                    sections.append(AnalysisSection(
+                        title: "Ayurvedic Remedies",
+                        icon: "leaf.fill",
+                        color: .orange,
+                        type: .remedies(remedies)
+                    ))
+                }
+            }
+            
+            // Skincare Tips
+            if let tips = extractSection(from: text, containing: ["SKINCARE", "TIPS", "✨", "DAILY"]) {
+                let points = extractBulletPoints(from: tips)
+                if !points.isEmpty {
+                    sections.append(AnalysisSection(
+                        title: "Daily Skincare Tips",
+                        icon: "sparkles",
+                        color: .pink,
+                        type: .bullets(points)
+                    ))
+                }
+            }
+            
+            return sections
+        }
+        
+        // MARK: - Helper Functions
+        private func extractSection(from text: String, containing keywords: [String]) -> String? {
+            let lines = text.components(separatedBy: "\n")
+            var capturing = false
+            var result: [String] = []
+            
+            for line in lines {
+                let upper = line.uppercased()
+                
+                // Check if this line starts a new section
+                if keywords.contains(where: { upper.contains($0) }) {
+                    capturing = true
+                    continue
+                }
+                
+                // Check if we hit another section header
+                if capturing {
+                    let sectionHeaders = ["SEVERITY", "OBSERVED", "POSSIBLE", "SHOULD DO", "AYURVEDIC", "SKINCARE", "TIPS", "DISCLAIMER", "IMPORTANT", "━━"]
+                    if sectionHeaders.contains(where: { upper.contains($0) }) && !keywords.contains(where: { upper.contains($0) }) {
+                        break
+                    }
+                    result.append(line)
+                }
+            }
+            
+            let joined = result.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            return joined.isEmpty ? nil : joined
+        }
+        
+        private func extractSeverityLevel(from text: String) -> String {
+            let lower = text.lowercased()
+            if lower.contains("healthy") || lower.contains("normal") { return "Healthy" }
+            if lower.contains("severe") { return "Severe" }
+            if lower.contains("moderate") { return "Moderate" }
+            if lower.contains("mild") { return "Mild" }
+            return "Mild"
+        }
+        
+        private func severityColor(_ level: String) -> Color {
+            switch level.lowercased() {
+            case "healthy": return .green
+            case "mild": return .yellow
+            case "moderate": return .orange
+            case "severe": return .red
+            default: return .gray
+            }
+        }
+        
+        private func extractBulletPoints(from text: String) -> [String] {
+            let lines = text.components(separatedBy: "\n")
+            var points: [String] = []
+            
+            for line in lines {
+                var cleaned = line
                     .replacingOccurrences(of: "•", with: "")
                     .replacingOccurrences(of: "▸", with: "")
                     .replacingOccurrences(of: "**", with: "")
+                    .replacingOccurrences(of: "- ", with: "")
                     .trimmingCharacters(in: .whitespaces)
                 
-                if !cleanedLine.isEmpty && !cleanedLine.hasPrefix("━") {
-                    currentSection?.content.append(cleanedLine)
+                // Remove leading numbers like "1.", "2."
+                if let range = cleaned.range(of: #"^\d+\.\s*"#, options: .regularExpression) {
+                    cleaned = String(cleaned[range.upperBound...])
+                }
+                
+                if !cleaned.isEmpty && cleaned.count > 3 && !cleaned.hasPrefix("━") {
+                    points.append(cleaned)
                 }
             }
+            
+            return points
         }
         
-        // Add last section
-        if let current = currentSection, !current.content.isEmpty {
-            sections.append(AnalysisSection(
-                icon: current.icon,
-                title: current.title,
-                color: current.color,
-                content: current.content
-            ))
-        }
-        
-        return sections
-    }
-}
-
-// MARK: - Analysis Section Model
-struct AnalysisSection: Identifiable {
-    var id: String { title }
-    let icon: String
-    let title: String
-    let color: Color
-    let content: [String]
-}
-
-// MARK: - Section Card View
-struct SectionCard: View {
-    let section: AnalysisSection
-    @State private var isExpanded = true
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            Button {
-                withAnimation(.spring(response: 0.3)) {
-                    isExpanded.toggle()
+        private func extractConditions(from text: String) -> [(name: String, probability: Int, description: String)] {
+            var conditions: [(String, Int, String)] = []
+            let lines = text.components(separatedBy: "\n")
+            
+            var currentName = ""
+            var currentProb = 0
+            var currentDesc = ""
+            
+            for line in lines {
+                let cleaned = line.replacingOccurrences(of: "**", with: "").trimmingCharacters(in: .whitespaces)
+                
+                // Check for percentage
+                if let probMatch = cleaned.range(of: #"(\d+)%"#, options: .regularExpression) {
+                    let probStr = cleaned[probMatch].replacingOccurrences(of: "%", with: "")
+                    currentProb = Int(probStr) ?? 50
+                    
+                    // Extract name (before the dash or percentage)
+                    if let dashRange = cleaned.range(of: " – ") ?? cleaned.range(of: " - ") {
+                        currentName = String(cleaned[..<dashRange.lowerBound])
+                            .replacingOccurrences(of: #"^\d+\.\s*"#, with: "", options: .regularExpression)
+                            .trimmingCharacters(in: .whitespaces)
+                    }
+                } else if !cleaned.isEmpty && cleaned.count > 10 && currentName.isEmpty == false {
+                    // This is likely a description line
+                    currentDesc = cleaned
+                    conditions.append((currentName, currentProb, currentDesc))
+                    currentName = ""
+                    currentProb = 0
+                    currentDesc = ""
                 }
-            } label: {
-                HStack {
+            }
+            
+            return conditions
+        }
+        
+        private func extractRemedies(from text: String) -> [(name: String, details: String)] {
+            var remedies: [(String, String)] = []
+            let lines = text.components(separatedBy: "\n")
+            
+            var currentName = ""
+            var currentDetails: [String] = []
+            
+            for line in lines {
+                let cleaned = line.replacingOccurrences(of: "**", with: "")
+                    .replacingOccurrences(of: "▸", with: "")
+                    .trimmingCharacters(in: .whitespaces)
+                
+                if cleaned.isEmpty || cleaned.hasPrefix("━") { continue }
+                
+                // Check if this is a remedy name (short line, often starts with capital)
+                if cleaned.count < 40 && !cleaned.lowercased().hasPrefix("ingredient") && !cleaned.lowercased().hasPrefix("how") && !cleaned.contains(":") {
+                    if !currentName.isEmpty {
+                        remedies.append((currentName, currentDetails.joined(separator: "\n")))
+                    }
+                    currentName = cleaned
+                    currentDetails = []
+                } else if !currentName.isEmpty {
+                    currentDetails.append(cleaned)
+                }
+            }
+            
+            if !currentName.isEmpty {
+                remedies.append((currentName, currentDetails.joined(separator: "\n")))
+            }
+            
+            return remedies
+        }
+    }
+
+    // MARK: - Section Data Model
+    struct AnalysisSection: Identifiable {
+        var id: String { title }
+        let title: String
+        let icon: String
+        let color: Color
+        let type: SectionType
+        
+        enum SectionType {
+            case severity(level: String)
+            case bullets([String])
+            case numbered([String])
+            case conditions([(name: String, probability: Int, description: String)])
+            case remedies([(name: String, details: String)])
+        }
+    }
+
+    // MARK: - Section Card View
+    struct SectionCardView: View {
+        let section: AnalysisSection
+        
+        var body: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                // Header
+                HStack(spacing: 10) {
                     Image(systemName: section.icon)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white)
@@ -568,193 +639,204 @@ struct SectionCard: View {
                     
                     Text(section.title)
                         .font(.headline)
-                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                }
+                
+                Divider()
+                
+                // Content based on type
+                switch section.type {
+                case .severity(let level):
+                    severityView(level: level)
+                case .bullets(let points):
+                    bulletsView(points: points)
+                case .numbered(let points):
+                    numberedView(points: points)
+                case .conditions(let items):
+                    conditionsView(items: items)
+                case .remedies(let items):
+                    remediesView(items: items)
+                }
+            }
+            .padding(16)
+            .background(Color(.systemBackground))
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
+        }
+        
+        // MARK: - Severity View
+        private func severityView(level: String) -> some View {
+            VStack(spacing: 12) {
+                HStack {
+                    Text(level)
+                        .font(.title2.bold())
+                        .foregroundColor(section.color)
                     
                     Spacer()
                     
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.caption.bold())
-                        .foregroundColor(.secondary)
+                    Text(severityEmoji(level))
+                        .font(.title)
                 }
-            }
-            
-            // Content
-            if isExpanded {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(Array(section.content.enumerated()), id: \.offset) { index, item in
-                        contentRow(item, index: index)
+                
+                // Progress bar
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(height: 10)
+                        
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(LinearGradient(colors: [.green, .yellow, .orange, .red], startPoint: .leading, endPoint: .trailing))
+                            .frame(width: geo.size.width * severityProgress(level), height: 10)
                     }
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-        }
-        .padding(16)
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
-    }
-    
-    @ViewBuilder
-    private func contentRow(_ text: String, index: Int) -> some View {
-        if section.title == "Severity" {
-            // Special severity display
-            HStack {
-                Text(text)
-                    .font(.title3.bold())
-                    .foregroundColor(severityColor(text))
-                Spacer()
-                severityBadge(text)
-            }
-        } else if text.contains(":") && section.title == "Ayurvedic Remedies" {
-            // Key-value for remedies
-            let parts = text.split(separator: ":", maxSplits: 1)
-            if parts.count == 2 {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(String(parts[0]))
-                        .font(.subheadline.bold())
-                        .foregroundColor(section.color)
-                    Text(String(parts[1]).trimmingCharacters(in: .whitespaces))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-            } else {
-                bulletPoint(text)
-            }
-        } else if section.title == "Possible Conditions" && text.contains("-") {
-            // Condition with percentage
-            conditionRow(text)
-        } else {
-            bulletPoint(text)
-        }
-    }
-    
-    private func bulletPoint(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Circle()
-                .fill(section.color.opacity(0.7))
-                .frame(width: 6, height: 6)
-                .padding(.top, 6)
-            
-            Text(text)
-                .font(.subheadline)
-                .foregroundColor(.primary)
-        }
-    }
-    
-    private func conditionRow(_ text: String) -> some View {
-        let parts = text.split(separator: "-", maxSplits: 1)
-        let name = String(parts.first ?? "").trimmingCharacters(in: .whitespaces)
-        let detail = parts.count > 1 ? String(parts[1]).trimmingCharacters(in: .whitespaces) : ""
-        
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(name)
-                    .font(.subheadline.bold())
+                .frame(height: 10)
                 
-                Spacer()
-                
-                if let percentage = extractPercentage(from: text) {
-                    Text("\(percentage)%")
-                        .font(.caption.bold())
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(percentageColor(percentage))
-                        .cornerRadius(8)
+                HStack {
+                    Text("Healthy").font(.caption2).foregroundColor(.green)
+                    Spacer()
+                    Text("Severe").font(.caption2).foregroundColor(.red)
                 }
             }
-            
-            if !detail.isEmpty && !detail.contains("%") {
-                Text(detail)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+        }
+        
+        private func severityEmoji(_ level: String) -> String {
+            switch level.lowercased() {
+            case "healthy": return "✅"
+            case "mild": return "⚠️"
+            case "moderate": return "🟠"
+            case "severe": return "🔴"
+            default: return "ℹ️"
             }
         }
-        .padding(10)
-        .background(Color.gray.opacity(0.08))
-        .cornerRadius(10)
-    }
-    
-    private func severityColor(_ text: String) -> Color {
-        let lower = text.lowercased()
-        if lower.contains("healthy") { return .green }
-        if lower.contains("mild") { return .yellow }
-        if lower.contains("moderate") { return .orange }
-        if lower.contains("severe") { return .red }
-        return .gray
-    }
-    
-    private func severityBadge(_ text: String) -> some View {
-        let lower = text.lowercased()
-        let (label, color): (String, Color) = {
-            if lower.contains("healthy") { return ("✅ Healthy", .green) }
-            if lower.contains("mild") { return ("⚠️ Mild", .yellow) }
-            if lower.contains("moderate") { return ("🟠 Moderate", .orange) }
-            if lower.contains("severe") { return ("🔴 Severe", .red) }
-            return ("", .gray)
-        }()
         
-        return Text(label)
-            .font(.caption.bold())
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(color.opacity(0.2))
-            .cornerRadius(8)
-    }
-    
-    private func extractPercentage(from text: String) -> Int? {
-        let pattern = #"(\d+)%"#
-        if let regex = try? NSRegularExpression(pattern: pattern),
-           let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
-           let range = Range(match.range(at: 1), in: text) {
-            return Int(text[range])
-        }
-        return nil
-    }
-    
-    private func percentageColor(_ percentage: Int) -> Color {
-        if percentage >= 70 { return .red }
-        if percentage >= 40 { return .orange }
-        return .green
-    }
-}
-
-// MARK: - Camera View
-struct CameraView: UIViewControllerRepresentable {
-    @Binding var image: UIImage?
-    @Environment(\.dismiss) var dismiss
-    
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .camera
-        picker.delegate = context.coordinator
-        picker.allowsEditing = true
-        return picker
-    }
-    
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-    
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-    
-    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: CameraView
-        init(_ parent: CameraView) { self.parent = parent }
-        
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            if let editedImage = info[.editedImage] as? UIImage {
-                parent.image = editedImage
-            } else if let originalImage = info[.originalImage] as? UIImage {
-                parent.image = originalImage
+        private func severityProgress(_ level: String) -> CGFloat {
+            switch level.lowercased() {
+            case "healthy": return 0.15
+            case "mild": return 0.35
+            case "moderate": return 0.65
+            case "severe": return 0.9
+            default: return 0.3
             }
-            parent.dismiss()
         }
         
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.dismiss()
+        // MARK: - Bullets View
+        private func bulletsView(points: [String]) -> some View {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(points, id: \.self) { point in
+                    HStack(alignment: .top, spacing: 10) {
+                        Circle()
+                            .fill(section.color.opacity(0.7))
+                            .frame(width: 6, height: 6)
+                            .padding(.top, 6)
+                        
+                        Text(point)
+                            .font(.subheadline)
+                            .foregroundColor(.primary)
+                    }
+                }
+            }
+        }
+        
+        // MARK: - Numbered View
+        private func numberedView(points: [String]) -> some View {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(Array(points.enumerated()), id: \.offset) { index, point in
+                    HStack(alignment: .top, spacing: 12) {
+                        Text("\(index + 1)")
+                            .font(.caption.bold())
+                            .foregroundColor(.white)
+                            .frame(width: 22, height: 22)
+                            .background(section.color)
+                            .cornerRadius(11)
+                        
+                        Text(point)
+                            .font(.subheadline)
+                    }
+                }
+            }
+        }
+        
+        // MARK: - Conditions View
+        private func conditionsView(items: [(name: String, probability: Int, description: String)]) -> some View {
+            VStack(spacing: 12) {
+                ForEach(items.indices, id: \.self) { index in
+                    let item = items[index]
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text(item.name)
+                                .font(.subheadline.bold())
+                            
+                            Spacer()
+                            
+                            Text("\(item.probability)%")
+                                .font(.caption.bold())
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(probabilityColor(item.probability))
+                                .cornerRadius(10)
+                        }
+                        
+                        // Progress bar
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Color.gray.opacity(0.2))
+                                    .frame(height: 5)
+                                
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(probabilityColor(item.probability))
+                                    .frame(width: geo.size.width * CGFloat(item.probability) / 100, height: 5)
+                            }
+                        }
+                        .frame(height: 5)
+                        
+                        if !item.description.isEmpty {
+                            Text(item.description)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(12)
+                    .background(Color.gray.opacity(0.06))
+                    .cornerRadius(10)
+                }
+            }
+        }
+        
+        private func probabilityColor(_ prob: Int) -> Color {
+            if prob >= 70 { return .red }
+            if prob >= 40 { return .orange }
+            return .green
+        }
+        
+        // MARK: - Remedies View
+        private func remediesView(items: [(name: String, details: String)]) -> some View {
+            VStack(spacing: 12) {
+                ForEach(items.indices, id: \.self) { index in
+                    let item = items[index]
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "leaf.fill")
+                                .foregroundColor(.green)
+                            Text(item.name)
+                                .font(.subheadline.bold())
+                        }
+                        
+                        Text(item.details)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.green.opacity(0.08))
+                    .cornerRadius(10)
+                }
+            }
         }
     }
-}
-
-#Preview {
-    HomeView().environmentObject(AppState())
-}
+    #Preview {
+        HomeView().environmentObject(AppState())
+    }

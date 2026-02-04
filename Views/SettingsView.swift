@@ -6,10 +6,7 @@ import SwiftUI
 
 struct SettingsView: View {
     // User Preferences Only
-    @AppStorage("dark_mode") private var isDarkMode = false
-    @AppStorage("notifications_enabled") private var notificationsEnabled = true
     @AppStorage("auto_save_enabled") private var autoSaveEnabled = true
-    @AppStorage("haptic_feedback_enabled") private var hapticFeedbackEnabled = true
     @AppStorage("language") private var selectedLanguage = "English"
     
     @State private var showResetAlert = false
@@ -34,9 +31,6 @@ struct SettingsView: View {
                     VStack(spacing: 24) {
                         // Profile Card
                         profileSection
-                        
-                        // App Preferences
-                        appPreferencesSection
                         
                         // Analysis Settings
                         analysisSettingsSection
@@ -134,41 +128,6 @@ struct SettingsView: View {
                 .fill(.ultraThinMaterial)
                 .shadow(color: .black.opacity(0.05), radius: 15, y: 8)
         )
-    }
-    
-    // MARK: - App Preferences Section
-    private var appPreferencesSection: some View {
-        SettingsSectionView(title: "App Preferences", icon: "slider.horizontal.3", iconColor: .blue) {
-            VStack(spacing: 0) {
-                SettingsToggleRow(
-                    title: "Dark Mode",
-                    subtitle: "Use dark theme",
-                    icon: "moon.fill",
-                    iconColor: .indigo,
-                    isOn: $isDarkMode
-                )
-                
-                Divider().padding(.vertical, 8)
-                
-                SettingsToggleRow(
-                    title: "Notifications",
-                    subtitle: "Get analysis reminders",
-                    icon: "bell.fill",
-                    iconColor: .red,
-                    isOn: $notificationsEnabled
-                )
-                
-                Divider().padding(.vertical, 8)
-                
-                SettingsToggleRow(
-                    title: "Haptic Feedback",
-                    subtitle: "Vibration on actions",
-                    icon: "iphone.radiowaves.left.and.right",
-                    iconColor: .orange,
-                    isOn: $hapticFeedbackEnabled
-                )
-            }
-        }
     }
     
     // MARK: - Analysis Settings Section
@@ -272,7 +231,7 @@ struct SettingsView: View {
                 Divider().padding(.vertical, 8)
                 AboutRow(label: "Developer", value: "Pulse_Point", icon: "person.fill")
                 Divider().padding(.vertical, 8)
-                AboutRow(label: "AI Engine", value: "Mistral + Gemini", icon: "cpu.fill")
+                AboutRow(label: "AI Engine", value: "OpenRouter AI", icon: "cpu.fill")
                 Divider().padding(.vertical, 8)
                 
                 // Social Links
@@ -395,10 +354,7 @@ struct SettingsView: View {
     }
     
     private func resetSettings() {
-        isDarkMode = false
-        notificationsEnabled = true
         autoSaveEnabled = true
-        hapticFeedbackEnabled = true
         selectedLanguage = "English"
         showToast()
         UINotificationFeedbackGenerator().notificationOccurred(.success)
